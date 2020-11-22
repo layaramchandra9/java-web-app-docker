@@ -9,7 +9,7 @@ node{
        def mavenHome= tool name: "Maven",type: "maven"
        sh "${mavenHome}/bin/mvn clean package"
     }
-    stage('Maven clean package')
+    stage('Build docker image')
     {
        sh "docker build -t layaramchandra/java-webapp-deployedin-tomcat:${build_number} ."
     }
