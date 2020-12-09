@@ -15,9 +15,9 @@ node{
     }
     stage('Docker login and push')
     {
-       withCredentials([string(credentialsId: 'DockerHubPwd', variable: 'DockerHubPwd')]) {
+       withCredentials([string(credentialsId: 'NexusPwd', variable: 'NexusPwd')]) {
        
-          sh "docker login -u admin 172.31.42.244:8081 -p ${DockerHubPwd}"
+          sh "docker login -u admin 172.31.42.244:8081 -p ${NexusPwd}"
           
        }
        sh "docker push 172.31.42.244:8081/java-webapp-deployedin-dockerswarm:${build_number}"
@@ -31,9 +31,9 @@ node{
     stage('Deploy Application As Docker container in docker deployment server')
     {
        sshagent(['Docker_Server_SSH']) {
-       withCredentials([string(credentialsId: 'DockerHubPwd', variable: 'DockerHubPwd')]) {
+       withCredentials([string(credentialsId: 'NexusPwd', variable: 'NexusPwd')]) {
        
-          sh "docker login -u admin 172.31.42.244:8081 -p ${DockerHubPwd}"
+          sh "docker login -u admin 172.31.42.244:8081 -p ${NexusPwd}"
           
        }
          sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.38.207 docker service rm javawebappcontainer || true"
