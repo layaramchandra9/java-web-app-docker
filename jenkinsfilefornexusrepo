@@ -1,0 +1,46 @@
+node{
+    def build_number=BUILD_NUMBER
+    stage('Git Clone')
+    {
+        git url: 'https://github.com/layaramchandra9/java-web-app-docker.git', branch : 'master'
+    }
+    stage('Maven clean package')
+    {
+       def mavenHome= tool name: "Maven",type: "maven"
+       sh "${mavenHome}/bin/mvn clean package"
+    }
+    stage('Build docker image')
+    {
+       sh "docker build -t 172.31.42.244:8081/java-webapp-deployedin-dockerswarm:${build_number} ."
+    }
+    stage('Docker login and push')
+    {
+       withCredentials([string(credentialsId: 'DockerHubPwd', variable: 'DockerHubPwd')]) {
+       
+          sh "docker login -u admin 172.31.42.244:8081 -p ${DockerHubPwd}"
+          
+       }
+       sh "docker push 172.31.42.244:8081/java-webapp-deployedin-dockerswarm:${build_number}"
+    // some block
+    }
+    
+    stage("Remove Local Image"){
+        sh "docker rmi -f 172.31.42.244:8081/java-webapp-deployedin-dockerswarm:${build_number}"
+    }
+    
+    stage('Deploy Application As Docker container in docker deployment server')
+    {
+       sshagent(['Docker_Server_SSH']) {
+       withCredentials([string(credentialsId: 'DockerHubPwd', variable: 'DockerHubPwd')]) {
+       
+          sh "docker login -u admin 172.31.42.244:8081 -p ${DockerHubPwd}"
+          
+       }
+         sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.38.207 docker service rm javawebappcontainer || true"
+       
+         sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.38.207 docker service create --with-registry-auth --name javawebappcontainer -p 8081:8080 --replicas=2 172.31.42.244:8081/java-webapp-deployedin-dockerswarm:${build_number}"
+       }
+    }
+    
+    
+}
