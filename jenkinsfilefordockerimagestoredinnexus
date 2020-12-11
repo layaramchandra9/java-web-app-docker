@@ -1,0 +1,50 @@
+node{
+    def build_number=BUILD_NUMBER
+    stage('Git Clone')
+    {
+        git url: 'https://github.com/layaramchandra9/java-web-app-docker.git', branch : 'master'
+    }
+    stage('Maven clean package')
+    {
+       def mavenHome= tool name: "Maven",type: "maven"
+       sh "${mavenHome}/bin/mvn clean package"
+    }
+    stage('Build docker image')
+    {
+       sh "docker build -t 172.31.35.77:8083/dockerimageinnexus:${build_number} ."
+    }
+    stage('Docker login and push')
+    {
+       withCredentials([string(credentialsId: 'PrivarRepoPwd', variable: 'PrivarRepoPwd')]) {
+       
+          sh "docker login -u admin -p ${PrivarRepoPwd} 172.31.35.77:8083"
+          
+       }
+       sh "docker push 172.31.35.77:8083/dockerimageinnexus:${build_number}"
+    // some block
+    }
+
+    stage('Remove docker image')
+    {
+       sh "docker rmi -f 172.31.35.77:8083/dockerimageinnexus:${build_number} ."
+    }
+
+   stage('Deploy Application As Docker container in docker deployment server')
+    {
+     
+      sshagent(['Nexus_Server_SSH']) {
+         
+         withCredentials([string(credentialsId: 'PrivarRepoPwd', variable: 'PrivarRepoPwd')]) {
+       
+         sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.19.145 docker login -u admin -p ${PrivarRepoPwd} 172.31.35.77:8083"
+          
+       }
+         
+         sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.19.145 docker service rm javawebappcontainer || true" 
+       
+         sh "ssh ubuntu@172.31.19.145 docker service create --name javawebappcontainer --with-registry-auth -p 8081:8080 --replicas=2 172.31.35.77:8083/dockerimageinnexus:${build_number}"
+       }
+    }
+    
+    
+}
